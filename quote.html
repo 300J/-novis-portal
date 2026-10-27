@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>Request a quote</title>
+<style>
+:root{--bg:#edf2f1;--card:#fff;--ink:#10201f;--muted:#5f7270;--brand:#0e8a8f;--line:#d5e0de;--bad:#b3261e}
+@media(prefers-color-scheme:dark){:root{--bg:#0c1515;--card:#132121;--ink:#e7eeee;--muted:#8da2a0;--line:#264342}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+main{max-width:560px;margin:0 auto;padding:18px 14px 40px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:12px}
+h1{font-size:24px;margin:6px 0 2px}.muted{color:var(--muted)}label{display:block;font-weight:600;margin:14px 0 6px;font-size:14px}
+input,textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit}textarea{min-height:92px;resize:vertical}
+button{font:inherit;border:0;border-radius:10px;padding:13px 16px;background:var(--brand);color:#fff;font-weight:700;width:100%;margin-top:18px;cursor:pointer}button[disabled]{opacity:.6}
+.alt{background:transparent;color:var(--brand);border:1px solid var(--brand);margin-top:10px}.row{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line)}
+.row small{color:var(--muted);display:block}.pick{background:transparent;color:var(--brand);border:1px solid var(--line);width:auto;margin:0;padding:6px 12px}.qty{display:flex;gap:8px;align-items:center}.qty button{width:34px;padding:6px;margin:0}
+.err{color:var(--bad);margin-top:10px}.hp{position:absolute;left:-9999px;height:0;overflow:hidden}.lang{float:right;font-size:13px;color:var(--brand);cursor:pointer;background:none;border:0;width:auto;margin:0;padding:4px}
+</style></head><body><main id="app"><p class="muted">Loading...</p></main>
+<script src="portal-config.js"></script>
+<script>
+(function () {
+  var T = { en: { title: 'Request a quote', name: 'Your name', phone: 'Your phone number', need: 'What do you need?', needHint: 'Item, car model, quantity, anything that helps', pick: 'Pick items (optional)', search: 'Search items', by: 'Needed by (optional)', send: 'Send request', sending: 'Sending...', thanks: 'Thank you! {s} will contact you soon.', wa: 'Message the shop on WhatsApp', bad: 'This link is not valid, or the shop is not taking requests right now.', net: 'Could not reach the server. Check your internet and try again.', again: 'Send another request', lang: 'Kiswahili' },
+    sw: { title: 'Omba nukuu ya bei', name: 'Jina lako', phone: 'Namba yako ya simu', need: 'Unahitaji nini?', needHint: 'Bidhaa, aina ya gari, idadi, chochote kinachosaidia', pick: 'Chagua bidhaa (si lazima)', search: 'Tafuta bidhaa', by: 'Unahitaji lini (si lazima)', send: 'Tuma ombi', sending: 'Inatuma...', thanks: 'Asante! {s} watawasiliana nawe hivi karibuni.', wa: 'Tuma ujumbe kwa WhatsApp', bad: 'Kiungo hiki si sahihi, au duka halipokei maombi kwa sasa.', net: 'Imeshindwa kuunganisha. Angalia mtandao kisha ujaribu tena.', again: 'Tuma ombi lingine', lang: 'English' } };
+  var lang = /^sw/i.test(navigator.language || '') ? 'sw' : 'en', C = window.NV_PORTAL, slug = (location.hash || '').slice(1).toLowerCase(), shop = null, picked = {}, app = document.getElementById('app');
+  function t(k) { return T[lang][k]; }
+  function h(tag, a, kids) { var e = document.createElement(tag); Object.keys(a || {}).forEach(function (k) { if (k === 'text') e.textContent = a[k]; else if (k === 'on') Object.keys(a.on).forEach(function (n) { e.addEventListener(n, a.on[n]); }); else e.setAttribute(k, a[k]); }); (kids || []).forEach(function (c) { if (c) e.appendChild(c); }); return e; }
+  function rpc(fn, body) { return fetch(C.url + '/rest/v1/rpc/' + fn, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: C.anonKey, Authorization: 'Bearer ' + C.anonKey }, body: JSON.stringify(body) }).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error('x'); return j; }); }); }
+  function show(n) { app.textContent = ''; app.appendChild(n); }
+  function bad(msg) { show(h('div', { class: 'card' }, [h('p', { text: msg })])); }
+  function form() {
+    var cfg = shop.config, nameI = h('input', { autocomplete: 'name', maxlength: '60' }), phoneI = h('input', { type: 'tel', inputmode: 'tel', autocomplete: 'tel', maxlength: '20' }), needT = h('textarea', { maxlength: '1400', placeholder: t('needHint') }), byI = h('input', { type: 'date' }), hp = h('input', { class: 'hp', tabindex: '-1', autocomplete: 'off' }), err = h('div', { class: 'err' }), list = h('div'), pickedBox = h('div'), btn = h('button', { type: 'button', text: t('send') });
+    function drawPicked() { pickedBox.textContent = ''; Object.keys(picked).forEach(function (n) { var q = h('span', { text: picked[n] }); pickedBox.appendChild(h('div', { class: 'row' }, [h('div', { text: n }), h('div', { class: 'qty' }, [h('button', { type: 'button', text: '-', on: { click: function () { picked[n]--; if (picked[n] < 1) delete picked[n]; drawPicked(); } } }), q, h('button', { type: 'button', text: '+', on: { click: function () { picked[n] = Math.min(999, picked[n] + 1); drawPicked(); } } })])])); }); }
+    function drawList(q) { list.textContent = ''; q = (q || '').toLowerCase(); if (!q) return; (cfg.catalog || []).filter(function (c) { return (c.n + ' ' + c.p + ' ' + c.c).toLowerCase().indexOf(q) >= 0; }).slice(0, 8).forEach(function (c) { list.appendChild(h('div', { class: 'row' }, [h('div', {}, [h('div', { text: c.n }), h('small', { text: [c.p, c.c].filter(Boolean).join(' · ') })]), h('button', { class: 'pick', type: 'button', text: '+', on: { click: function () { picked[c.n] = (picked[c.n] || 0) + 1; drawPicked(); } } })])); }); }
+    var kids = [h('button', { class: 'lang', type: 'button', text: t('lang'), on: { click: function () { lang = lang === 'en' ? 'sw' : 'en'; form(); } } }), h('h1', { text: cfg.name }), h('div', { class: 'muted', text: cfg.intro || '' })];
+    var card = h('div', { class: 'card' }, [h('label', { text: t('name') }), nameI, h('label', { text: t('phone') }), phoneI, h('label', { text: t('need') }), needT]);
+    if (cfg.showCatalog && (cfg.catalog || []).length) { var s = h('input', { placeholder: t('search'), on: { input: function (e) { drawList(e.target.value); } } }); card.appendChild(h('label', { text: t('pick') })); card.appendChild(s); card.appendChild(list); card.appendChild(pickedBox); }
+    card.appendChild(h('label', { text: t('by') })); card.appendChild(byI); card.appendChild(hp); card.appendChild(err); card.appendChild(btn);
+    btn.addEventListener('click', function () {
+      err.textContent = ''; var items = Object.keys(picked).map(function (n) { return { name: n, qty: picked[n] }; }), req = needT.value.trim() || (items.length ? 'Items: ' + items.map(function (i) { return i.qty + ' x ' + i.name; }).join(', ') : '');
+      btn.disabled = true; btn.textContent = t('sending');
+      rpc('nv_quote_request', { p_slug: slug, p_name: nameI.value, p_phone: phoneI.value, p_request: req, p_items: items.length ? items : null, p_need_by: byI.value || null, p_email: null, p_hp: hp.value }).then(function (r) {
+        if (r && r.ok) return done(nameI.value, req); err.textContent = (r && r.error) || t('net'); btn.disabled = false; btn.textContent = t('send');
+      }).catch(function () { err.textContent = t('net'); btn.disabled = false; btn.textContent = t('send'); });
+    });
+    kids.push(card); show(h('div', {}, kids));
+  }
+  function done(who, req) {
+    var cfg = shop.config, k = [h('h1', { text: cfg.name }), h('div', { class: 'card' }, [h('p', { text: t('thanks').replace('{s}', cfg.name) })])];
+    if (cfg.phone) k[1].appendChild(h('a', { href: 'https://wa.me/' + cfg.phone + '?text=' + encodeURIComponent('Hello, this is ' + who + '. I just sent a quote request: ' + req), target: '_blank', rel: 'noopener' }, [h('button', { class: 'alt', type: 'button', text: t('wa') })]));
+    k[1].appendChild(h('button', { class: 'alt', type: 'button', text: t('again'), on: { click: function () { picked = {}; form(); } } })); show(h('div', {}, k));
+  }
+  window.addEventListener('hashchange', function () { location.reload(); });
+  if (!C || !/^[a-z0-9-]{4,40}$/.test(slug)) return bad(t('bad'));
+  rpc('nv_quote_get', { p_slug: slug }).then(function (r) { if (!r || !r.config) return bad(t('bad')); shop = r; document.title = r.config.name; form(); }).catch(function () { bad(t('net')); });
+})();
+</script></body></html>
